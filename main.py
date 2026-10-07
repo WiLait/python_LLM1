@@ -1,5 +1,6 @@
 import os
 import time
+import pandas as pd
 from dotenv import load_dotenv
 from openai import OpenAI
 
@@ -7,28 +8,25 @@ load_dotenv()
 
 API_KEY = os.getenv("LLM_API_KEY")
 BASE_URL = os.getenv("LLM_BASE_URL")
-MODEL_NAME = os.getenv("LLM_MODEL_1")
+
+# Collect model names from environment variables
+MODELS = []
+i = 1
+while True:
+    model_var = f"LLM_MODEL_{i}"
+    model_name = os.getenv(model_var)
+    if model_name is None:
+        break
+    MODELS.append(model_name)
+    i += 1
 
 client = OpenAI(api_key=API_KEY, base_url=BASE_URL)
 
-prompts = [
-    "Объясни студенту 4 курса разницу между хешированием и симметричным шифрованием. Не более 120 слов.",
-    "Определи тип события: «После 15 неудачных попыток входа с одного IP выполнен успешный вход администратора». Ответь одним словом.",
-    "Суммируй следующий текст в одно предложение: «Zero Trust — это модель безопасности, которая требует строгой проверки каждого пользователя и устройства, пытающегося получить доступ к ресурсам сети, независимо от того, находятся они внутри периметра компании или снаружи».",
-    "Извлеки из текста имя, должность и компанию: «Иван Петров, ведущий инженер по безопасности в ООО Ромашка, сегодня подписал отчет». Ответь в формате JSON.",
-    "Напиши функцию на Python, которая принимает строку и возвращает True, если она является валидным email адресом, и False в противном случае. Без лишних пояснений.",
-    "Найди ошибку в коде и объясни, как её исправить: def add(a, b): return a + b * 2 (при вызове add(2, 3) ожидается 10, а возвращается 8).",
-    "У Алисы, Боба и Чарли есть три шляпы: красная, зеленая и синяя. Алиса не носит красную. Боб носит зеленую. Кто какую шляпу носит?",
-    "Какие основные меры необходимо предпринять для защиты веб-приложения от SQL-инъекций? Назови не менее трех.",
-    "Перепиши фразу в официально-деловом стиле: «Мы не можем сделать это в срок, потому что у нас сломалась база данных».",
-    "Перечисли три главных преимущества использования VPN. Ответ должен строго содержать только нумерованный список без вступительных и заключительных слов."
-]
-
-def ask_model(prompt: str) -> tuple[str, float]:
+def ask_model(prompt: str, model_name: str) -> tuple[str, float]:
     started = time.perf_counter()
     try:
         response = client.chat.completions.create(
-            model=MODEL_NAME,
+            model=model_name,
             messages=[
                 {"role": "system", "content": "Отвечай точно и по существу."},
                 {"role": "user", "content": prompt},
@@ -42,6 +40,28 @@ def ask_model(prompt: str) -> tuple[str, float]:
         return f"Ошибка API: {str(e)}", elapsed
 
 if __name__ == "__main__":
-    answer, latency = ask_model("Объясни разницу между хешированием и шифрованием.")
-    print(answer)
-    print(f"\nВремя ответа: {latency:.2f} с")
+    results = []
+    
+    for model in MODELS:
+        print(f"\nТестируем модель: {model}")
+        for i, prompt in enumerate(prompts, start=1):
+            print(f"  Запрос {i}/{len(prompts)}")
+            answer, latency = ask_model(prompt, model)
+            
+            # Check if there was an error
+            error = None
+            if answer.startswith("Ошибка API:"):
+                error = answer
+            
+            results.append({
+                'model': model,
+                'prompt_id': i,
+                'latency': latency,
+                'answer': answer,
+                'error': error
+            })
+    
+    # Save results to CSV file
+    df = pd.DataFrame(results)
+    df.to_csv('results.csv', index=False)
+    print("\nРезультаты сохранены в файл results.csv")
