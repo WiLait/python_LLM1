@@ -1,0 +1,6 @@
+# Python LLM1 project requirements
+
+# Add your dependencies here
+# Example:
+# requests==2.28.1
+# numpy>=1.21.0
