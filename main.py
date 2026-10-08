@@ -61,49 +61,43 @@ def sanitize_filename(filename):
     return filename
 
 if __name__ == "__main__":
-    # Handle command line arguments
     selected_models = []
     
     if len(sys.argv) == 1:
-        # No arguments provided - interactive mode
+        # Интерактивный режим
         print("Доступные модели:")
         for i, model in enumerate(MODELS, start=1):
             print(f"  [{i}] {model}")
         
-        user_input = input("Введите номер модели для теста (или 'all' для всех): ")
+        user_input = input("Введите номер модели для теста: ")
         
-        if user_input.lower() == 'all':
-            selected_models = MODELS.copy()
-        else:
-            try:
-                index = int(user_input) - 1
-                if 0 <= index < len(MODELS):
-                    selected_models = [MODELS[index]]
-                else:
-                    print("Ошибка: Неверный номер модели")
-                    sys.exit(1)
-            except ValueError:
-                print("Ошибка: Введите число или 'all'")
+        try:
+            index = int(user_input) - 1
+            if 0 <= index < len(MODELS):
+                selected_models = [MODELS[index]]
+            else:
+                print("Ошибка: Неверный номер модели")
                 sys.exit(1)
+        except ValueError:
+            print("Ошибка: Введите число")
+            sys.exit(1)
+            
     elif len(sys.argv) == 2:
-        # One argument provided
+        # Режим с аргументом командной строки
         arg = sys.argv[1]
-        if arg.lower() == 'all':
-            selected_models = MODELS.copy()
-        else:
-            try:
-                index = int(arg) - 1
-                if 0 <= index < len(MODELS):
-                    selected_models = [MODELS[index]]
-                else:
-                    print("Ошибка: Неверный номер модели")
-                    sys.exit(1)
-            except ValueError:
-                print("Ошибка: Введите корректный номер модели или 'all'")
+        try:
+            index = int(arg) - 1
+            if 0 <= index < len(MODELS):
+                selected_models = [MODELS[index]]
+            else:
+                print("Ошибка: Неверный номер модели")
                 sys.exit(1)
+        except ValueError:
+            print("Ошибка: Введите корректный номер модели")
+            sys.exit(1)
     else:
-        # More than one argument provided - invalid
-        print("Использование: python main.py [номер_модели|all]")
+        # Слишком много аргументов
+        print("Использование: python main.py [номер_модели]")
         sys.exit(1)
     
     results = []
@@ -114,7 +108,7 @@ if __name__ == "__main__":
             print(f"  Запрос {i}/{len(prompts)}")
             answer, latency = ask_model(prompt, model)
             
-            # Check if there was an error
+            # Проверка на ошибку
             error = None
             if answer.startswith("Ошибка API:"):
                 error = answer
@@ -128,11 +122,8 @@ if __name__ == "__main__":
                 'error': error
             })
     
-    # Save results to CSV file with appropriate filename
-    if len(selected_models) == 1:
-        filename = f"results_{sanitize_filename(selected_models[0])}.csv"
-    else:
-        filename = "results_all.csv"
+    # Сохранение результатов в CSV с именем модели
+    filename = f"results_{sanitize_filename(selected_models[0])}.csv"
         
     df = pd.DataFrame(results)
     df.to_csv(filename, index=False)
